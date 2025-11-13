@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
+  <!-- Firebase SDK（互換版）-->
+<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore-compat.js"></script>
+
 <head>
   <meta charset="UTF-8" />
   <title>AI付箋ボード - Gemini分類版</title>
@@ -340,6 +344,20 @@
 </main>
 
 <script>
+  // ==== Firebase 設定 ====
+const firebaseConfig = {
+  apiKey: "AIzaSyCPgjXJw9HQ2AUMzgN4O16s7UYjDllO87I",
+  authDomain: "aifusen-class.firebaseapp.com",
+  projectId: "aifusen-class",
+  storageBucket: "aifusen-class.firebasestorage.app",
+  messagingSenderId: "414270455525",
+  appId: "1:414270455525:web:95444f14ee8306b6af1e0c",
+  measurementId: "G-H74HN1KZTY"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
   // ==== 付箋データ管理 ====
   const notes = [];
 
@@ -359,27 +377,68 @@
   let noteCounter = 1;
   const GEMINI_MODEL = "gemini-2.5-flash"; // 推奨の軽量モデル :contentReference[oaicite:1]{index=1}
 
-  addBtn.addEventListener("click", () => {
-    const name = nameInput.value.trim() || "名無し";
-    const tag = tagInput.value.trim();
-    const text = commentInput.value.trim();
+// Firestore の notes コレクションをリアルタイムで監視
+db.collection("notes").orderBy("createdAt")
+  .onSnapshot((snapshot) => {
+    notes.length = 0; // いったんクリア
+    snapshot.forEach((doc) => {
+      const d = doc.data();
+      notes.push({
+        id: d.id,
+        name: d.name,
+        tag: d.tag,
+        text: d.text,
+        category: d.category || "未分類"
+      });
+    });
 
-    if (!text) {
-      formStatus.textContent = "コメントを入力してください。";
-      formStatus.classList.add("error");
-      return;
-    }
+    // ID の最大値からカウンタを更新（N001, N002,... を維持）
+    const maxNum = notes.reduce((max, n) => {
+      const num = parseInt(n.id.slice(1), 10);
+      return isNaN(num) ? max : Math.max(max, num);
+    }, 0);
+    noteCounter = maxNum + 1;
 
-    const id = `N${String(noteCounter).padStart(3, "0")}`;
-    noteCounter++;
+    renderBoard();
+  });
 
-    notes.push({
+  
+addBtn.addEventListener("click", async () => {
+  const name = nameInput.value.trim() || "名無し";
+  const tag = tagInput.value.trim();
+  const text = commentInput.value.trim();
+
+  if (!text) {
+    formStatus.textContent = "コメントを入力してください。";
+    formStatus.classList.add("error");
+    return;
+  }
+
+  const id = `N${String(noteCounter).padStart(3, "0")}`;
+  noteCounter++;
+
+  try {
+    await db.collection("notes").doc(id).set({
       id,
       name,
       tag,
       text,
-      category: "未分類"
+      category: "未分類",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    commentInput.value = "";
+    formStatus.textContent = "付箋を追加しました。";
+    formStatus.classList.remove("error");
+    setTimeout(() => (formStatus.textContent = ""), 1500);
+    // 表示更新は onSnapshot 側で行われる
+  } catch (e) {
+    console.error(e);
+    formStatus.textContent = "保存中にエラーが発生しました。";
+    formStatus.classList.add("error");
+  }
+});
+
 
     commentInput.value = "";
     formStatus.textContent = "付箋を追加しました。";
@@ -574,6 +633,13 @@
         const cat = map.get(n.id);
         if (cat) n.category = cat;
       });
+// notes の category を更新したあとに追加
+const batch = db.batch();
+notes.forEach((n) => {
+  const ref = db.collection("notes").doc(n.id);
+  batch.update(ref, { category: n.category });
+});
+await batch.commit();
 
       renderBoard();
       alert("分類が完了しました。");
