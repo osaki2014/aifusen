@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
   <!-- Firebase SDK（互換版）-->
-<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore-compat.js"></script>
+  <!-- QRコード生成ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <head>
   <meta charset="UTF-8" />
@@ -44,9 +46,33 @@
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
-    header h1 span.emoji { font-size: 1.3rem; }
+
+    /* QRアイコンボタン */
+    .qr-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid #cbd5f5;
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+    }
+    .qr-button:hover {
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+    .qr-icon {
+      width: 20px;
+      height: 20px;
+      /* シンプルなQR風アイコン（SVGデータ） */
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' fill='%23ffffff'/><rect x='3' y='3' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='23' y='3' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='3' y='23' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='7' y='7' width='6' height='6' fill='%23000000'/><rect x='27' y='7' width='6' height='6' fill='%23000000'/><rect x='7' y='27' width='6' height='6' fill='%23000000'/><rect x='22' y='22' width='4' height='4' fill='%23000000'/><rect x='30' y='22' width='3' height='7' fill='%23000000'/><rect x='22' y='30' width='7' height='3' fill='%23000000'/></svg>");
+      background-size: cover;
+      background-position: center;
+    }
 
     .toolbar {
       display: flex;
@@ -277,11 +303,54 @@
       background: var(--accent-soft);
       color: #1d296b;
     }
+
+    /* QRモーダル */
+    #qrOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    #qrOverlay.active {
+      display: flex;
+    }
+    .qr-modal {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 16px 20px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+    }
+    .qr-modal h2 {
+      margin: 0 0 4px;
+      font-size: 0.95rem;
+    }
+    .qr-modal p {
+      margin: 0 0 8px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    #qrContainer {
+      margin: 8px auto 12px;
+    }
+    #qrClose {
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
 <header>
-  <h1><span class="emoji">📝</span>AI付箋ボード（Gemini）</h1>
+  <h1>
+    <button id="qrButton" class="qr-button" type="button" aria-label="QRコードを表示">
+      <span class="qr-icon"></span>
+    </button>
+    <span>AI付箋ボード（Gemini）</span>
+  </h1>
   <!-- ダミーフォーム: Enter で勝手に送信されないように -->
   <form class="toolbar" onsubmit="return false;">
     <div class="toolbar-group">
@@ -343,13 +412,53 @@
   </section>
 </main>
 
+<!-- QRコード表示用モーダル -->
+<div id="qrOverlay">
+  <div class="qr-modal">
+    <h2>AI付箋ボード 参加用QRコード</h2>
+    <p>スマホやタブレットでこのQRコードを読み取ってください。</p>
+    <div id="qrContainer"></div>
+    <button id="qrClose" class="btn-ghost" type="button">閉じる</button>
+  </div>
+</div>
+
 <script>
+  // ==== QRコード表示 ====
+  const QR_URL = "https://osaki2014.github.io/aifusen/";
+  const qrButton = document.getElementById("qrButton");
+  const qrOverlay = document.getElementById("qrOverlay");
+  const qrClose = document.getElementById("qrClose");
+  const qrContainer = document.getElementById("qrContainer");
+  let qrInstance = null;
+
+  qrButton.addEventListener("click", () => {
+    if (!qrInstance) {
+      qrInstance = new QRCode(qrContainer, {
+        text: QR_URL,
+        width: 256,
+        height: 256
+      });
+    }
+    qrOverlay.classList.add("active");
+  });
+
+  qrClose.addEventListener("click", () => {
+    qrOverlay.classList.remove("active");
+  });
+
+  // モーダルの背景クリックでも閉じる
+  qrOverlay.addEventListener("click", (e) => {
+    if (e.target === qrOverlay) {
+      qrOverlay.classList.remove("active");
+    }
+  });
+
   // ==== Firebase 設定 ====
   const firebaseConfig = {
     apiKey: "AIzaSyCPgjXJw9HQ2AUMzgN4O16s7UYjDllO87I",
     authDomain: "aifusen-class.firebaseapp.com",
     projectId: "aifusen-class",
-    storageBucket: "aifusen-class.appspot.com", // ← こちらの方が正しい形式
+    storageBucket: "aifusen-class.appspot.com",
     messagingSenderId: "414270455525",
     appId: "1:414270455525:web:95444f14ee8306b6af1e0c",
     measurementId: "G-H74HN1KZTY"
