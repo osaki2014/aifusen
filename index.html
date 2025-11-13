@@ -132,6 +132,11 @@
       border: 1px solid #cbd5f5;
       color: #475569;
     }
+    .btn-ghost-danger {
+      background: transparent;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
 
     main {
       display: grid;
@@ -405,6 +410,13 @@
 
   <section class="panel">
     <h2>📌 付箋ボード</h2>
+
+    <!-- 保存・削除ボタン -->
+    <div class="field-row" style="justify-content:flex-end; margin-bottom:4px;">
+      <button id="exportBtn" class="btn-ghost" type="button">💾 付箋データを保存</button>
+      <button id="clearBtn" class="btn-ghost-danger" type="button">🗑 付箋データを削除</button>
+    </div>
+
     <p class="hint" id="boardHint">
       まだ付箋がありません。左からコメントを追加してください。
     </p>
@@ -480,6 +492,9 @@
   const categoriesInput = document.getElementById("categories");
   const classifyBtn = document.getElementById("classifyBtn");
 
+  const exportBtn = document.getElementById("exportBtn");
+  const clearBtn = document.getElementById("clearBtn");
+
   const boardEl = document.getElementById("board");
   const boardHint = document.getElementById("boardHint");
 
@@ -492,12 +507,15 @@
       notes.length = 0; // いったんクリア
       snapshot.forEach((doc) => {
         const d = doc.data();
+        const createdAt =
+          d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : null;
         notes.push({
           id: d.id,
           name: d.name,
           tag: d.tag,
           text: d.text,
-          category: d.category || "未分類"
+          category: d.category || "未分類",
+          createdAt
         });
       });
 
@@ -553,6 +571,88 @@
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       addBtn.click();
+    }
+  });
+
+  // ==== CSVエスケープ ====
+  function csvEscape(value) {
+    const v = (value ?? "").toString().replace(/"/g, '""');
+    return `"${v}"`;
+  }
+
+  // ==== 付箋データ保存（CSVダウンロード） ====
+  exportBtn.addEventListener("click", () => {
+    if (notes.length === 0) {
+      alert("保存する付箋がありません。");
+      return;
+    }
+
+    const header = ["id", "name", "tag", "text", "category", "createdAt"];
+    const lines = [header.join(",")];
+
+    notes.forEach((n) => {
+      const created =
+        n.createdAt instanceof Date
+          ? n.createdAt.toISOString()
+          : (n.createdAt || "");
+      const row = [
+        n.id,
+        n.name,
+        n.tag,
+        n.text,
+        n.category,
+        created
+      ].map(csvEscape).join(",");
+      lines.push(row);
+    });
+
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    const now = new Date();
+    const pad = (num) => String(num).padStart(2, "0");
+    const filename =
+      `aifusen_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_` +
+      `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
+
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // ==== 付箋データ削除（全削除） ====
+  clearBtn.addEventListener("click", async () => {
+    if (notes.length === 0) {
+      alert("削除する付箋がありません。");
+      return;
+    }
+
+    const ok = confirm(
+      "すべての付箋データを削除します。よろしいですか？\n（この操作は元に戻せません）"
+    );
+    if (!ok) return;
+
+    clearBtn.disabled = true;
+    clearBtn.textContent = "削除中...";
+
+    try {
+      const snapshot = await db.collection("notes").get();
+      const batch = db.batch();
+      snapshot.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      alert("すべての付箋データを削除しました。");
+      // onSnapshot が自動で notes と画面を更新
+    } catch (e) {
+      console.error(e);
+      alert("削除中にエラーが発生しました。コンソールを確認してください。");
+    } finally {
+      clearBtn.disabled = false;
+      clearBtn.textContent = "🗑 付箋データを削除";
     }
   });
 
