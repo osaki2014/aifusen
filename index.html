@@ -8,7 +8,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>AI付箋ボード - Gemini分類版</title>
+  <title>AIふせんボード - Gemini分類版</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     :root {
@@ -354,7 +354,7 @@
     <button id="qrButton" class="qr-button" type="button" aria-label="QRコードを表示">
       <span class="qr-icon"></span>
     </button>
-    <span>AI付箋ボード（Gemini）</span>
+    <span>AIふせんボード（Gemini）</span>
   </h1>
   <!-- ダミーフォーム: Enter で勝手に送信されないように -->
   <form class="toolbar" onsubmit="return false;">
@@ -376,7 +376,7 @@
   <section class="panel">
     <h2>✍ コメントを追加</h2>
     <p class="hint">
-      名前はニックネームでもOKです。送信すると右側に付箋として追加されます。
+      名前はニックネームでもOKです。送信すると右側に「ふせん」として追加されます。
     </p>
 
     <div class="field-row">
@@ -396,29 +396,29 @@
     </div>
 
     <div class="field-row" style="align-items:center; margin-top:4px;">
-      <button id="addBtn" class="btn-ghost" type="button">➕ 付箋を追加</button>
+      <button id="addBtn" class="btn-ghost" type="button">➕ ふせんを追加</button>
       <div id="formStatus" class="status"></div>
     </div>
 
     <hr style="margin:10px 0; border:none; border-top:1px dashed #e2e8f0;" />
 
     <p class="hint">
-      上の「分類する」ボタンを押すと、すべての付箋を Gemini が
+      上の「分類する」ボタンを押すと、すべてのふせんを Gemini が
       <span class="badge">カテゴリ分類</span>します。
     </p>
   </section>
 
   <section class="panel">
-    <h2>📌 付箋ボード</h2>
+    <h2>📌 ふせんボード</h2>
 
     <!-- 保存・削除ボタン -->
     <div class="field-row" style="justify-content:flex-end; margin-bottom:4px;">
-      <button id="exportBtn" class="btn-ghost" type="button">💾 付箋データを保存</button>
-      <button id="clearBtn" class="btn-ghost-danger" type="button">🗑 付箋データを削除</button>
+      <button id="exportBtn" class="btn-ghost" type="button">💾 ふせんデータを保存</button>
+      <button id="clearBtn" class="btn-ghost-danger" type="button">🗑 ふせんデータを削除</button>
     </div>
 
     <p class="hint" id="boardHint">
-      まだ付箋がありません。左からコメントを追加してください。
+      まだふせんがありません。左からコメントを追加してください。
     </p>
     <div id="board" class="board"></div>
   </section>
@@ -427,7 +427,7 @@
 <!-- QRコード表示用モーダル -->
 <div id="qrOverlay">
   <div class="qr-modal">
-    <h2>AI付箋ボード 参加用QRコード</h2>
+    <h2>AIふせんボード 参加用QRコード</h2>
     <p>スマホやタブレットでこのQRコードを読み取ってください。</p>
     <div id="qrContainer"></div>
     <button id="qrClose" class="btn-ghost" type="button">閉じる</button>
@@ -479,7 +479,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // ==== 付箋データ管理 ====
+  // ==== ふせんデータ管理 ====
   const notes = [];
 
   const nameInput = document.getElementById("nameInput");
@@ -529,7 +529,7 @@
       renderBoard();
     });
 
-  // ==== 付箋を追加（Firestoreに保存） ====
+  // ==== ふせんを追加（Firestoreに保存） ====
   addBtn.addEventListener("click", async () => {
     const name = nameInput.value.trim() || "名無し";
     const tag = tagInput.value.trim();
@@ -555,7 +555,7 @@
       });
 
       commentInput.value = "";
-      formStatus.textContent = "付箋を追加しました。";
+      formStatus.textContent = "ふせんを追加しました。";
       formStatus.classList.remove("error");
       setTimeout(() => (formStatus.textContent = ""), 1500);
       // 表示更新は onSnapshot 側で行われる
@@ -566,7 +566,7 @@
     }
   });
 
-  // Cmd/Ctrl+Enter で付箋追加
+  // Cmd/Ctrl+Enter でふせん追加
   commentInput.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -580,10 +580,10 @@
     return `"${v}"`;
   }
 
-  // ==== 付箋データ保存（CSVダウンロード） ====
+  // ==== ふせんデータ保存（CSVダウンロード） ====
   exportBtn.addEventListener("click", () => {
     if (notes.length === 0) {
-      alert("保存する付箋がありません。");
+      alert("保存するふせんがありません。");
       return;
     }
 
@@ -625,15 +625,15 @@
     URL.revokeObjectURL(url);
   });
 
-  // ==== 付箋データ削除（全削除） ====
+  // ==== ふせんデータ削除（全削除） ====
   clearBtn.addEventListener("click", async () => {
     if (notes.length === 0) {
-      alert("削除する付箋がありません。");
+      alert("削除するふせんがありません。");
       return;
     }
 
     const ok = confirm(
-      "すべての付箋データを削除します。よろしいですか？\n（この操作は元に戻せません）"
+      "すべてのふせんデータを削除します。よろしいですか？\n（この操作は元に戻せません）"
     );
     if (!ok) return;
 
@@ -645,14 +645,14 @@
       const batch = db.batch();
       snapshot.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-      alert("すべての付箋データを削除しました。");
+      alert("すべてのふせんデータを削除しました。");
       // onSnapshot が自動で notes と画面を更新
     } catch (e) {
       console.error(e);
       alert("削除中にエラーが発生しました。コンソールを確認してください。");
     } finally {
       clearBtn.disabled = false;
-      clearBtn.textContent = "🗑 付箋データを削除";
+      clearBtn.textContent = "🗑 ふせんデータを削除";
     }
   });
 
@@ -660,7 +660,7 @@
   function renderBoard() {
     boardEl.innerHTML = "";
     if (notes.length === 0) {
-      boardHint.textContent = "まだ付箋がありません。左からコメントを追加してください。";
+      boardHint.textContent = "まだふせんがありません。左からコメントを追加してください。";
       return;
     }
     boardHint.textContent = "";
@@ -726,7 +726,7 @@
   // ==== Gemini で分類（JSONモード + ゆるいパース） ====
   async function classifyNotes() {
     if (notes.length === 0) {
-      alert("分類する付箋がありません。");
+      alert("分類するふせんがありません。");
       return;
     }
 
