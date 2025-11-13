@@ -552,7 +552,7 @@
         categories.join(" / ") + "\n\n" +
         "出力は JSON オブジェクトのみとし、余計な説明文やコードブロックマーカーは一切書かないでください。\n" +
         "形式は次のようにしてください：\n" +
-        '{\"comments\":[{\"id\":\"N001\",\"text\":\"コメント本文\",\"category\":\"感想\"}, ...]}\n\n" +
+        "{\"comments\":[{\"id\":\"N001\",\"text\":\"コメント本文\",\"category\":\"感想\"}, ...]}\n\n" +
         "では、次の comments を分類してください：\n\n" +
         JSON.stringify({ comments: payloadNotes }, null, 2);
 
