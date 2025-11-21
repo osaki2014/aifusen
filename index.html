@@ -247,9 +247,13 @@
       padding-right: 2px;
     }
 
+    /* ★ ふせんのサイズを内容に合わせて伸びるように調整 */
     .note {
       position: relative;
-      padding: 10px 10px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 10px 10px 20px; /* 下にID表示用の余白を少し多めに */
       border-radius: 10px;
       background: #fef9c3;
       box-shadow:
@@ -261,6 +265,8 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       cursor: default;
       word-break: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
     }
     .note:nth-child(2n) {
       transform: rotate(1.3deg);
@@ -292,7 +298,11 @@
       background: rgba(15, 23, 42, 0.12);
       color: #020617;
     }
-    .note-text { white-space: pre-wrap; }
+    .note-text {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
     .note-id {
       position: absolute;
       bottom: 4px;
