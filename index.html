@@ -222,7 +222,7 @@
       border: 1px dashed #cbd5f5;
       display: flex;
       flex-direction: column;
-      max-height: calc(100vh - 140px);
+      /* ← max-height を削除してはみ出しを防ぐ */
     }
     .column-header {
       font-size: 0.85rem;
@@ -240,20 +240,17 @@
       background: rgba(148, 163, 184, 0.14);
     }
     .column-body {
-      overflow-y: auto;
-      display: grid;
-      grid-auto-rows: minmax(0, auto);
-      gap: 8px;
-      padding-right: 2px;
-    }
-
-    /* ★ ふせんのサイズを内容に合わせて伸びるように調整 */
-    .note {
-      position: relative;
+      /* 個々の列の中は自然な高さで積み重なるように */
       display: flex;
       flex-direction: column;
-      align-items: stretch;
-      padding: 10px 10px 20px; /* 下にID表示用の余白を少し多めに */
+      gap: 8px;
+      padding-right: 2px;
+      overflow-y: visible;  /* 内側ではスクロールさせない */
+    }
+
+    .note {
+      position: relative;
+      padding: 12px 12px 18px;  /* 余白を少し広く */
       border-radius: 10px;
       background: #fef9c3;
       box-shadow:
@@ -265,8 +262,7 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       cursor: default;
       word-break: break-word;
-      overflow-wrap: break-word;
-      max-width: 100%;
+      overflow-wrap: anywhere; /* 長い英数字や日本語も折り返す */
     }
     .note:nth-child(2n) {
       transform: rotate(1.3deg);
@@ -300,7 +296,7 @@
     }
     .note-text {
       white-space: pre-wrap;
-      overflow-wrap: break-word;
+      overflow-wrap: anywhere;
       word-break: break-word;
     }
     .note-id {
@@ -529,7 +525,6 @@
         });
       });
 
-      // ID の最大値からカウンタを更新（N001, N002,... を維持）
       const maxNum = notes.reduce((max, n) => {
         const num = parseInt(n.id.slice(1), 10);
         return isNaN(num) ? max : Math.max(max, num);
@@ -568,7 +563,6 @@
       formStatus.textContent = "ふせんを追加しました。";
       formStatus.classList.remove("error");
       setTimeout(() => (formStatus.textContent = ""), 1500);
-      // 表示更新は onSnapshot 側で行われる
     } catch (e) {
       console.error(e);
       formStatus.textContent = "保存中にエラーが発生しました。";
@@ -656,7 +650,6 @@
       snapshot.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
       alert("すべてのふせんデータを削除しました。");
-      // onSnapshot が自動で notes と画面を更新
     } catch (e) {
       console.error(e);
       alert("削除中にエラーが発生しました。コンソールを確認してください。");
@@ -839,7 +832,6 @@
         if (cat) n.category = cat;
       });
 
-      // Firestore にもカテゴリを反映
       const batch = db.batch();
       notes.forEach((n) => {
         const ref = db.collection("notes").doc(n.id);
