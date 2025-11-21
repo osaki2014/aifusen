@@ -330,9 +330,6 @@
       background: #fee2e2;
       color: #b91c1c;
     }
-    .note-like-count {
-      font-weight: 600;
-    }
 
     .note-id {
       position: absolute;
@@ -452,9 +449,10 @@
   <section class="panel">
     <h2>📌 みんなのふせんボード</h2>
 
-    <!-- 保存・削除ボタン -->
+    <!-- 保存・削除・いいねリセットボタン -->
     <div class="field-row" style="justify-content:flex-end; margin-bottom:4px;">
       <button id="exportBtn" class="btn-ghost" type="button">💾 全てのふせんを保存</button>
+      <button id="resetLikesBtn" class="btn-ghost" type="button">💗 いいねをリセット</button>
       <button id="clearBtn" class="btn-ghost-danger" type="button">🗑 全てのふせんを削除</button>
     </div>
 
@@ -533,6 +531,7 @@
   const classifyBtn = document.getElementById("classifyBtn");
 
   const exportBtn = document.getElementById("exportBtn");
+  const resetLikesBtn = document.getElementById("resetLikesBtn");
   const clearBtn = document.getElementById("clearBtn");
 
   const boardEl = document.getElementById("board");
@@ -665,6 +664,37 @@
     URL.revokeObjectURL(url);
   });
 
+  // ==== いいね一括リセット ====
+  resetLikesBtn.addEventListener("click", async () => {
+    if (notes.length === 0) {
+      alert("リセットするいいねがありません。");
+      return;
+    }
+    const ok = confirm("すべてのふせんの『いいね』を 0 にリセットします。よろしいですか？");
+    if (!ok) return;
+
+    resetLikesBtn.disabled = true;
+    const originalText = resetLikesBtn.textContent;
+    resetLikesBtn.textContent = "リセット中...";
+
+    try {
+      const snapshot = await db.collection("notes").get();
+      const batch = db.batch();
+      snapshot.forEach((doc) => {
+        batch.update(doc.ref, { likes: 0 });
+      });
+      await batch.commit();
+      alert("すべての『いいね』をリセットしました。");
+      // onSnapshot により画面は自動更新される
+    } catch (e) {
+      console.error(e);
+      alert("リセット中にエラーが発生しました。コンソールを確認してください。");
+    } finally {
+      resetLikesBtn.disabled = false;
+      resetLikesBtn.textContent = originalText;
+    }
+  });
+
   // ==== ふせんデータ削除（全削除） ====
   clearBtn.addEventListener("click", async () => {
     if (notes.length === 0) {
@@ -678,6 +708,7 @@
     if (!ok) return;
 
     clearBtn.disabled = true;
+    const originalText = clearBtn.textContent;
     clearBtn.textContent = "削除中...";
 
     try {
@@ -691,7 +722,7 @@
       alert("削除中にエラーが発生しました。コンソールを確認してください。");
     } finally {
       clearBtn.disabled = false;
-      clearBtn.textContent = "🗑 ふせんデータを削除";
+      clearBtn.textContent = originalText;
     }
   });
 
@@ -753,8 +784,7 @@
           const likeBtn = document.createElement("button");
           likeBtn.type = "button";
           likeBtn.className = "note-btn note-btn-like";
-          const likeCount = n.likes ?? 0;
-          likeBtn.textContent = "👍 " + likeCount;
+          likeBtn.textContent = "👍 " + (n.likes ?? 0);
 
           likeBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
@@ -763,7 +793,6 @@
               await db.collection("notes")
                 .doc(n.id)
                 .update({ likes: firebase.firestore.FieldValue.increment(1) });
-              // 表示更新は onSnapshot で自動反映
             } catch (err) {
               console.error(err);
               alert("いいねの反映中にエラーが発生しました。");
