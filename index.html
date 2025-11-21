@@ -68,7 +68,6 @@
     .qr-icon {
       width: 20px;
       height: 20px;
-      /* シンプルなQR風アイコン（SVGデータ） */
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' fill='%23ffffff'/><rect x='3' y='3' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='23' y='3' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='3' y='23' width='14' height='14' fill='none' stroke='%23000000' stroke-width='3'/><rect x='7' y='7' width='6' height='6' fill='%23000000'/><rect x='27' y='7' width='6' height='6' fill='%23000000'/><rect x='7' y='27' width='6' height='6' fill='%23000000'/><rect x='22' y='22' width='4' height='4' fill='%23000000'/><rect x='30' y='22' width='3' height='7' fill='%23000000'/><rect x='22' y='30' width='7' height='3' fill='%23000000'/></svg>");
       background-size: cover;
       background-position: center;
@@ -222,7 +221,6 @@
       border: 1px dashed #cbd5f5;
       display: flex;
       flex-direction: column;
-      /* ← max-height を削除してはみ出しを防ぐ */
     }
     .column-header {
       font-size: 0.85rem;
@@ -240,17 +238,16 @@
       background: rgba(148, 163, 184, 0.14);
     }
     .column-body {
-      /* 個々の列の中は自然な高さで積み重なるように */
       display: flex;
       flex-direction: column;
       gap: 8px;
       padding-right: 2px;
-      overflow-y: visible;  /* 内側ではスクロールさせない */
+      overflow-y: visible;
     }
 
     .note {
       position: relative;
-      padding: 12px 12px 18px;  /* 余白を少し広く */
+      padding: 12px 12px 22px;
       border-radius: 10px;
       background: #fef9c3;
       box-shadow:
@@ -262,7 +259,7 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       cursor: default;
       word-break: break-word;
-      overflow-wrap: anywhere; /* 長い英数字や日本語も折り返す */
+      overflow-wrap: anywhere;
     }
     .note:nth-child(2n) {
       transform: rotate(1.3deg);
@@ -299,6 +296,44 @@
       overflow-wrap: anywhere;
       word-break: break-word;
     }
+
+    /* フッターボタン（いいね／削除） */
+    .note-footer {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+    .note-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .note-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .note-btn-like {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+    .note-btn-del {
+      border-color: #fecaca;
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .note-like-count {
+      font-weight: 600;
+    }
+
     .note-id {
       position: absolute;
       bottom: 4px;
@@ -464,7 +499,6 @@
     qrOverlay.classList.remove("active");
   });
 
-  // モーダルの背景クリックでも閉じる
   qrOverlay.addEventListener("click", (e) => {
     if (e.target === qrOverlay) {
       qrOverlay.classList.remove("active");
@@ -510,7 +544,7 @@
   // ==== Firestore の notes コレクションをリアルタイムで監視 ====
   db.collection("notes").orderBy("createdAt")
     .onSnapshot((snapshot) => {
-      notes.length = 0; // いったんクリア
+      notes.length = 0;
       snapshot.forEach((doc) => {
         const d = doc.data();
         const createdAt =
@@ -521,7 +555,8 @@
           tag: d.tag,
           text: d.text,
           category: d.category || "未分類",
-          createdAt
+          createdAt,
+          likes: d.likes || 0
         });
       });
 
@@ -556,7 +591,8 @@
         tag,
         text,
         category: "未分類",
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        likes: 0
       });
 
       commentInput.value = "";
@@ -570,7 +606,6 @@
     }
   });
 
-  // Cmd/Ctrl+Enter でふせん追加
   commentInput.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -591,7 +626,7 @@
       return;
     }
 
-    const header = ["id", "name", "tag", "text", "category", "createdAt"];
+    const header = ["id", "name", "tag", "text", "category", "createdAt", "likes"];
     const lines = [header.join(",")];
 
     notes.forEach((n) => {
@@ -605,7 +640,8 @@
         n.tag,
         n.text,
         n.category,
-        created
+        created,
+        n.likes ?? 0
       ].map(csvEscape).join(",");
       lines.push(row);
     });
@@ -710,12 +746,59 @@
           textEl.className = "note-text";
           textEl.textContent = n.text;
 
+          // いいね / 削除ボタン
+          const footerEl = document.createElement("div");
+          footerEl.className = "note-footer";
+
+          const likeBtn = document.createElement("button");
+          likeBtn.type = "button";
+          likeBtn.className = "note-btn note-btn-like";
+          const likeCount = n.likes ?? 0;
+          likeBtn.textContent = "👍 " + likeCount;
+
+          likeBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            likeBtn.disabled = true;
+            try {
+              await db.collection("notes")
+                .doc(n.id)
+                .update({ likes: firebase.firestore.FieldValue.increment(1) });
+              // 表示更新は onSnapshot で自動反映
+            } catch (err) {
+              console.error(err);
+              alert("いいねの反映中にエラーが発生しました。");
+            } finally {
+              likeBtn.disabled = false;
+            }
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "note-btn note-btn-del";
+          delBtn.textContent = "🗑 削除";
+
+          delBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const ok = confirm(`このふせん（${n.id}）を削除しますか？`);
+            if (!ok) return;
+            try {
+              await db.collection("notes").doc(n.id).delete();
+            } catch (err) {
+              console.error(err);
+              alert("削除中にエラーが発生しました。");
+            }
+          });
+
+          footerEl.appendChild(likeBtn);
+          footerEl.appendChild(delBtn);
+
           const idEl = document.createElement("div");
           idEl.className = "note-id";
           idEl.textContent = n.id;
 
           noteEl.appendChild(authorEl);
           noteEl.appendChild(textEl);
+          noteEl.appendChild(footerEl);
           noteEl.appendChild(idEl);
 
           body.appendChild(noteEl);
