@@ -15,7 +15,7 @@
       --bg: #f5efe0;          /* 教室の壁っぽい明るい色 */
       --card: #ffffff;
       --ink: #222;
-      --accent: #8b5a2b;      /* ★ 茶色：黒板の木枠と合わせる */
+      --accent: #8b5a2b;      /* 茶色：黒板の木枠と合わせる */
       --accent-soft: #e0e7ff;
       --danger: #ef4444;
     }
@@ -121,7 +121,7 @@
       white-space: nowrap;
     }
     .btn-primary {
-      background: var(--accent);  /* ★ 茶色ボタン */
+      background: var(--accent);  /* 茶色ボタン */
       color: #fff;
     }
     .btn-primary:disabled {
@@ -227,7 +227,6 @@
       color: #e5f2d0;
     }
 
-    /* 黒板の上にあるボタンは少し明るく見えるように */
     .panel.board-panel .btn-ghost {
       border-color: rgba(226, 232, 240, 0.7);
       background: rgba(255, 255, 255, 0.12);
@@ -301,7 +300,7 @@
       cursor: default;
       word-break: break-word;
       overflow-wrap: anywhere;
-      color: #111111;          /* ★ 付箋内の文字色を黒に */
+      color: #111111;          /* 付箋内の文字色を黒に */
     }
     .note:nth-child(2n) {
       transform: rotate(1.3deg);
@@ -407,8 +406,11 @@
       padding: 16px 20px;
       box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
       text-align: center;
-      max-width: 320px;
-      width: 90%;
+      max-width: 90vw;
+      width: min(90vw, 440px);   /* 初期サイズ。ここから自由にリサイズ可能 */
+      resize: both;              /* ★ マウスでリサイズ可能 */
+      overflow: auto;
+      cursor: default;
     }
     .qr-modal h2 {
       margin: 0 0 4px;
@@ -421,6 +423,18 @@
     }
     #qrContainer {
       margin: 8px auto 12px;
+      width: 100%;               /* モーダルの幅に追従 */
+      max-width: 600px;          /* 必要なら上限。もっと大きくしたければ増やす */
+      aspect-ratio: 1 / 1;      /* 正方形を維持 */
+      display: flex;
+      align-items: center;
+      justify-content: center;   /* ★ 中央揃え */
+    }
+    #qrContainer canvas,
+    #qrContainer img {
+      width: 100%;               /* コンテナに合わせて拡大縮小 */
+      height: 100%;
+      display: block;
     }
     #qrClose {
       font-size: 0.8rem;
@@ -529,8 +543,8 @@
     if (!qrInstance) {
       qrInstance = new QRCode(qrContainer, {
         text: QR_URL,
-        width: 256,
-        height: 256
+        width: 360,   // ベース解像度（CSSで拡大縮小）
+        height: 360
       });
     }
     qrOverlay.classList.add("active");
